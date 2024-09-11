@@ -2,3 +2,4 @@
 /kitti_data/
 /runs/
 /.vscode
+/lightning_logs/
