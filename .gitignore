@@ -3,3 +3,4 @@
 /runs/
 /.vscode
 /lightning_logs/
+/checkpoints/
