@@ -1,7 +1,4 @@
-/data/
-/runs/
 /.vscode
 /lightning_logs/
-/checkpoints/
 __pycache__/
 *.py[cod]
