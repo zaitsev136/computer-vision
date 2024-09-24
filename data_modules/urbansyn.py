@@ -108,7 +108,7 @@ class UrbanSynDataset(Dataset):
 
 
 class UrbanSynDataModule(LightningDataModule):
-    def __init__(self, data_dir='./data/urbansyn', batch_size=16, downscaling=4,
+    def __init__(self, data_dir='./data/urbansyn', batch_size=16, downscaling=2,
                  train_transforms='default', val_transforms='default'):
         """LightningDataModule for downscaled UrbanSyn dataset.
 
@@ -116,7 +116,7 @@ class UrbanSynDataModule(LightningDataModule):
             data_dir (str, optional): path to the data. The _resized suffix
                 is appended when necessary. Defaults to './data/urbansyn'.
             batch_size (int, optional): batch size. Defaults to 16.
-            downscaling (int, optional): downscaling factor. Defaults to 4.
+            downscaling (int, optional): downscaling factor. Defaults to 2.
             train_transforms (obj, optional): albumentation transforms for the
                 training data or 'default', in which case HorizontalFlip,
                 ColorJitter, Normalize and ToTensorV2 are applied.
@@ -237,13 +237,13 @@ class UrbanSynDownloader:
             if i == len(dataset)-1:
                 break
 
-    def get_datamodule(self, batch_size=16, downscaling=4,
+    def get_datamodule(self, batch_size=16, downscaling=2,
                        train_transforms='default', val_transforms='default'):
         """Returns an UrbanSynDataModule
 
         Args:
             batch_size (int, optional): batch size. Defaults to 16.
-            downscaling (int, optional): downscaling factor. Defaults to 4.
+            downscaling (int, optional): downscaling factor. Defaults to 2.
             train_transforms (obj, optional): albumentation transforms for the
                 training data or 'default', in which case HorizontalFlip,
                 ColorJitter, Normalize and ToTensorV2 are applied.
@@ -325,20 +325,20 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
 
-    parser = argparse.ArgumentParser(description="CLI for downloading and downsampling the UrbanSyn dataset.")
+    parser = argparse.ArgumentParser(description='CLI for downloading and downsampling the UrbanSyn dataset.')
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
     download_parser = subparsers.add_parser('download', help='Download the dataset')
     download_parser.add_argument('--data_dir', type=str, default=os.path.join(root_dir,  'data'),
-                                 help='Output path')
+                                 help='Output path. (Default: %(default)s)')
     download_parser.add_argument('--data_types', nargs='+', default=['rgb', 'ss'],
-                                 help='Which data to download: "rgb" for images, "ss" for segmentation masks')
+                                 help='Which data to download: "rgb" for images, "ss" for segmentation masks. (Default: rgb ss)')
 
     downscale_parser = subparsers.add_parser('downscale', help='Downscales the images and maps in the dataset by the provided factor.')
     downscale_parser.add_argument('--data_dir', type=str, default=os.path.join(root_dir, 'data'),
-                                 help='Path to the directory containing the urbansyn folder.')
+                                 help='Path to the directory containing the urbansyn folder. (Default: %(default)s)')
     downscale_parser.add_argument('--factors', nargs='+', default=[2, 4],
-                                 help='Downscaling factors.')
+                                 help='Downscaling factors. (Default: 2 4)')
 
     # Parse the arguments
     args = parser.parse_args()

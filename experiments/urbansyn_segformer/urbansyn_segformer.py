@@ -1,23 +1,18 @@
-from matplotlib import pyplot as plt
 import numpy as np
 from PIL import Image
 import os
 import sys
-from tqdm.auto import tqdm
 
 import torch
 import torch.nn.functional as F
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from einops import rearrange
 
 from transformers import SegformerForSemanticSegmentation
 
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.cli import LightningCLI
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 
 # local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -115,13 +110,13 @@ class CustomLightningCLI(LightningCLI):
         # Add custom arguments to the parser for prediction
         parser.add_argument('--input_path', type=str, help='Path to the input image for prediction')
         parser.add_argument('--output_path', type=str, help='Filename for the output. By default, appends _segmap to the input_path', default=None)
-        parser.set_defaults({'data.downscaling': 2,
-                             'data.data_dir': os.path.join(root_dir, 'data', 'urbansyn'),
+        parser.set_defaults({'data.data_dir': os.path.join(root_dir, 'data', 'urbansyn'),
                              'trainer.max_epochs': 500,
                              'trainer.precision': 'bf16-mixed'})
 
     def instantiate_classes(self):
-        if self.config[self.config['subcommand']]['ckpt_path'] is None:
+        # for validate and predict, set best.ckpt as the default checkpoint
+        if self.config[self.config['subcommand']]['ckpt_path'] is None and 'fit' not in self.config['subcommand']:
             self.config[self.config['subcommand']]['ckpt_path'] = os.path.join(current_dir, 'best.ckpt')
 
         super().instantiate_classes()
@@ -132,7 +127,7 @@ class CustomLightningCLI(LightningCLI):
             if input_path:
                 self.run_prediction(input_path, self.config['predict']['output_path'])
             else:
-                raise ValueError('Input data path must be provided for prediction mode.')
+                raise ValueError('Input data path must be provided for prediction mode. Use the --input_path argument.')
     
     def run_prediction(self, input_path, output_path):
         input = np.array(Image.open(input_path).convert('RGB'))
@@ -155,6 +150,15 @@ class CustomLightningCLI(LightningCLI):
         segmap.save(output_path)
         print('The output is saved to', output_path)
         exit()
+
+    @staticmethod
+    def subcommands():
+        """Defines the list of available subcommands and the arguments to skip."""
+        return {
+            "fit": {"model", "train_dataloaders", "val_dataloaders", "datamodule"},
+            "validate": {"model", "dataloaders", "datamodule"},
+            "predict": {"model", "dataloaders", "datamodule"},
+        }
 
 
 def cli_main():
