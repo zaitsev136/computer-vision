@@ -18,7 +18,7 @@ NUM_VAL = 7539 - 6016  # number of validation images
 
 # inverse normalization with ImageNet coefficients
 INV_NORMALIZE = T.Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225],
-                            std=[1/0.229, 1/0.224, 1/0.255])
+                            std=[1/0.229, 1/0.224, 1/0.225])
 
 COLORS = [
     [0, 0, 0],
