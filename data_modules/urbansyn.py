@@ -9,6 +9,7 @@ from pytorch_lightning import LightningDataModule
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from torchvision import transforms as T
+import argparse
 
 
 NUM_CLASSES = 20  # number of segmentation classes 
@@ -42,58 +43,11 @@ COLORS = [
     [119, 11, 32],
     ]
 
-CLASS_NAMES = ['unlabelled', 'road', 'sidewalk', 'building', 'wall', 'fence', 'pole', 'traffic_light', \
-               'traffic_sign', 'vegetation', 'terrain', 'sky', 'person', 'rider', 'car', 'truck', 'bus', \
-               'train', 'motorcycle', 'bicycle']
+CLASS_NAMES = ['unlabelled', 'road', 'sidewalk', 'building', 'wall', 'fence', 'pole', 'traffic_light',
+                'traffic_sign', 'vegetation', 'terrain', 'sky', 'person', 'rider', 'car', 'truck', 'bus',
+                'train', 'motorcycle', 'bicycle']
 
 LABEL_COLORS = dict(zip(range(NUM_CLASSES), COLORS))
-
-
-def download(data_dir='data', data_types=('rgb', 'ss')):
-    """Downloads the UrbanSyn dataset (https://www.urbansyn.org/) from
-    huggingface_hub. The entire dataset is >70 GB, so it takes a while
-    to download it. Without the depth maps it is "only" 21 GB.
-
-    Args:
-        data_dir (str, optional): destination directory. Defaults to 'data'.
-        data_types (tuple, optional): types of data to download.
-            'rgb' for images (21 GB), 'ss' for semantic segmentation maps
-            (385 MB), 'depth' for depth maps (59 GB!). Defaults to
-            ('rgb', 'ss').
-    """
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-
-    urbansyn_dir = os.path.join(data_dir, 'urbansyn')
-    if os.path.exists(urbansyn_dir):
-        print(f'{urbansyn_dir} already exists.')
-    else:
-        for dt in data_types:
-            print('downloading ' + dt + '...')
-            snapshot_download(repo_id="UrbanSyn/UrbanSyn", repo_type="dataset",
-                              local_dir=urbansyn_dir, allow_patterns=f'{dt}/*')
-            print('done')
-
-
-def _shift_class_indices(segmap):
-    y = segmap + 1
-    y[y==NUM_CLASSES] = 0
-    return y
-
-
-def albumentation_transform(transforms, x, y):
-    """Applies the albumentations transforms to images and segmentation maps
-
-    Args:
-        transforms: albumentations transformation
-        x (np.ndarray): images
-        y (np.ndarray): segmentation masks
-
-    Returns:
-        tuple: transformed_images, transformed_masks
-    """
-    transformed = transforms(image=x, mask=y)
-    return  transformed['image'], transformed['mask']
 
 
 class UrbanSynDataset(Dataset):
@@ -120,7 +74,7 @@ class UrbanSynDataset(Dataset):
                 self.path = os.path.join(self.path+'_resized', size_str)
 
     def __getitem__(self, index):
-        if self.split=='val':
+        if self.split=='val' or self.split=='predict':
             i = index + NUM_TRAIN + 1
         else:
             i = index + 1
@@ -138,6 +92,8 @@ class UrbanSynDataset(Dataset):
         x,y = albumentation_transform(self.transforms, x, y)
         # if using the raw dataset, shifting the class indices by 1,
         # so the background has index 0
+        if self.split=='predict':
+            return x
         if not self.resized:
             y = _shift_class_indices(y)
         return x, y
@@ -145,46 +101,10 @@ class UrbanSynDataset(Dataset):
     def __len__(self):
         if self.split=='train':
             return NUM_TRAIN
-        elif self.split=='val':
+        elif self.split=='val' or self.split=='predict':
             return NUM_VAL
         else:
-            return NUM_TRAIN+NUM_VAL
-        
-
-def downscale(factor, input_path='./data/urbansyn',
-              output_path='./data/urbansyn_resized'):
-    """Downscale the entire UrbanSyn dataset by the provided factor
-
-    Args:
-        factor (int): downscaling factor. Good choices are multiples of 2
-        input_path (str, optional): Path to raw UrbanSyn data.
-            Defaults to './data/urbansyn'.
-        output_path (str, optional): output path.
-            Defaults to './data/urbansyn_resized'.
-    """
-    raw_size = np.array((1024, 2048))
-    new_size = raw_size//factor
-    dataset = UrbanSynDataset(input_path, transforms=A.Resize(*new_size),
-                              split='all', resized=False)
-
-    os.makedirs(output_path, exist_ok=True)
-
-    full_output_path = os.path.join(output_path, str(new_size[0]))
-    if os.path.exists(full_output_path):
-        print(full_output_path, 'already exists.')
-        return
-    
-    os.makedirs(full_output_path)
-    rgb_path = os.path.join(full_output_path, 'rgb')
-    os.makedirs(rgb_path)
-    ss_path = os.path.join(full_output_path, 'ss')
-    os.makedirs(ss_path)
-
-    for i, (x, y) in tqdm(enumerate(dataset), total=len(dataset)):
-        np.save(os.path.join(rgb_path, f'rgb_{i+1:04}.npy'), x)
-        np.save(os.path.join(ss_path, f'ss_{i+1:04}.npy'), y)
-        if i == len(dataset)-1:
-            break
+            return NUM_TRAIN + NUM_VAL
 
 
 class UrbanSynDataModule(LightningDataModule):
@@ -228,34 +148,147 @@ class UrbanSynDataModule(LightningDataModule):
             self.val_transforms = val_transforms
 
     def setup(self, stage: str):
-        if stage == "fit":
+        if 'fit' in stage:
             self.train_dataset = UrbanSynDataset(self.data_dir,
-                                                 self.train_transforms,
-                                                 'train',
-                                                 downscaling=self.downscaling)
-            
+                                        self.train_transforms,
+                                        'train',
+                                        downscaling=self.downscaling)
+        if 'fit' in stage or 'val' in stage:
             self.val_dataset = UrbanSynDataset(self.data_dir,
                                                self.val_transforms,
                                                'val',
                                                downscaling=self.downscaling)
+        if 'predict' in stage:
+            self.predict_dataset = UrbanSynDataset(self.data_dir,
+                                                   self.val_transforms,
+                                                   'predict',
+                                                   downscaling=self.downscaling)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False)
+    
+    def predict_dataloader(self):
+        return DataLoader(self.predict_dataset, batch_size=self.batch_size, shuffle=False)
 
 
-def colorize_segmap(segmap, return_np=False, color_last=True):
+class UrbanSynDownloader:
+    def __init__(self, data_dir='data'):
+        self.data_dir = data_dir
+        self.path = os.path.join(data_dir, 'urbansyn')
+        self.path_resized = os.path.join(data_dir, 'urbansyn_resized')
+
+    def download(self, data_types=('rgb', 'ss')):
+        """Downloads the UrbanSyn dataset (https://www.urbansyn.org/) from
+        huggingface_hub. The entire dataset is >70 GB, so it takes a while
+        to download it. Without the depth maps it is "only" 21 GB.
+
+        Args:
+            data_types (tuple, optional): types of data to download.
+                'rgb' for images (21 GB), 'ss' for semantic segmentation maps
+                (385 MB), 'depth' for depth maps (59 GB!). Defaults to
+                ('rgb', 'ss').
+        """
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
+
+        if os.path.exists(self.path):
+            print(f'{self.path} already exists.')
+        else:
+            for dt in data_types:
+                print('downloading ' + dt + '...')
+                snapshot_download(repo_id="UrbanSyn/UrbanSyn", repo_type="dataset",
+                                  local_dir=self.path, allow_patterns=f'{dt}/*')
+                print('done')
+
+    def downscale(self, factor):
+        """Downscale the entire UrbanSyn dataset by the provided factor
+
+        Args:
+            factor (int): downscaling factor. Good choices are multiples of 2
+            input_path (str, optional): Path to raw UrbanSyn data.
+                Defaults to './data/urbansyn'.
+            output_path (str, optional): output path.
+                Defaults to './data/urbansyn_resized'.
+        """
+        raw_size = np.array((1024, 2048))
+        new_size = raw_size//factor
+        dataset = UrbanSynDataset(self.path, transforms=A.Resize(*new_size),
+                                  split='all', resized=False)
+
+        os.makedirs(self.path_resized, exist_ok=True)
+
+        full_output_path = os.path.join(self.path_resized, str(new_size[0]))
+        if os.path.exists(full_output_path):
+            print(full_output_path, 'already exists.')
+            return
+        
+        os.makedirs(full_output_path)
+        rgb_path = os.path.join(full_output_path, 'rgb')
+        os.makedirs(rgb_path)
+        ss_path = os.path.join(full_output_path, 'ss')
+        os.makedirs(ss_path)
+
+        for i, (x, y) in tqdm(enumerate(dataset), total=len(dataset)):
+            np.save(os.path.join(rgb_path, f'rgb_{i+1:04}.npy'), x)
+            np.save(os.path.join(ss_path, f'ss_{i+1:04}.npy'), y)
+            if i == len(dataset)-1:
+                break
+
+    def get_datamodule(self, batch_size=16, downscaling=4,
+                       train_transforms='default', val_transforms='default'):
+        """Returns an UrbanSynDataModule
+
+        Args:
+            batch_size (int, optional): batch size. Defaults to 16.
+            downscaling (int, optional): downscaling factor. Defaults to 4.
+            train_transforms (obj, optional): albumentation transforms for the
+                training data or 'default', in which case HorizontalFlip,
+                ColorJitter, Normalize and ToTensorV2 are applied.
+                Defaults to 'default'.
+            val_transforms (obj, optional): albumentation transforms for the
+                validation data or 'default', in which case Normalize and
+                ToTensorV2 are applied. Defaults to 'default'.
+
+        Returns:
+            _type_: _description_
+        """
+        return UrbanSynDataModule(self.path, batch_size, downscaling,
+                                  train_transforms, val_transforms)
+
+
+def _shift_class_indices(segmap):
+    y = segmap + 1
+    y[y==NUM_CLASSES] = 0
+    return y
+
+
+def albumentation_transform(transforms, x, y):
+    """Applies the albumentations transforms to images and segmentation maps
+
+    Args:
+        transforms: albumentations transformation
+        x (np.ndarray): images
+        y (np.ndarray): segmentation masks
+
+    Returns:
+        tuple: transformed_images, transformed_masks
+    """
+    transformed = transforms(image=x, mask=y)
+    return  transformed['image'], transformed['mask']
+
+
+def colorize_segmap(segmap, for_pil=False):
     """Convert segmentation map with class indices into an RGB image,
     represented with a tensor or np.ndarray 
 
     Args:
         mask (torch.Tensor): segmentation mask
-        return_np (bool, optional): If True, returns np.ndarray instead
-            of torch.Tensor. Defaults to False.
-        color_last (bool, optional): if True, the output shape is (H, W, C).
-            If False, the shape is (C, H, W). Defaults to True.
+        for_pil (bool, optional): If True, returns np.ndarray of uint8
+            with shape (H, W, C), ready to be saved as image with PIL.
+            If False, returns a torch.Tensor (C, H, W)
 
     Returns:
         np.ndarray or torch.Tensor: RGB image of the segmentation map
@@ -270,20 +303,57 @@ def colorize_segmap(segmap, return_np=False, color_last=True):
         b[segmap == l] = LABEL_COLORS[l][2]
     
     rgb = np.zeros(list(segmap.shape)+[3])
-    rgb[..., 0] = r / 255.0
-    rgb[..., 1] = g / 255.0
-    rgb[..., 2] = b / 255.0
+    rgb[..., 0] = r
+    rgb[..., 1] = g
+    rgb[..., 2] = b
 
-    if not color_last:
+    if for_pil:
+        return rgb.astype(np.uint8)
+    else:
+        rgb = rgb / 255.
         if len(rgb.shape)==4:
             rgb = np.transpose(rgb, (0, 3, 1, 2))
         elif len(rgb.shape)==3:
             rgb = np.transpose(rgb, (2, 0, 1))
         else:
             raise ValueError(f'mask must have shape either (H,W) or (N,H,W), but {segmap.size()} is provided')
+        
+        return torch.from_numpy(rgb)        
 
-    if return_np:
-        return rgb
+
+def main():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+
+    parser = argparse.ArgumentParser(description="CLI for downloading and downsampling the UrbanSyn dataset.")
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    download_parser = subparsers.add_parser('download', help='Download the dataset')
+    download_parser.add_argument('--data_dir', type=str, default=os.path.join(root_dir,  'data'),
+                                 help='Output path')
+    download_parser.add_argument('--data_types', nargs='+', default=['rgb', 'ss'],
+                                 help='Which data to download: "rgb" for images, "ss" for segmentation masks')
+
+    downscale_parser = subparsers.add_parser('downscale', help='Downscales the images and maps in the dataset by the provided factor.')
+    downscale_parser.add_argument('--data_dir', type=str, default=os.path.join(root_dir, 'data'),
+                                 help='Path to the directory containing the urbansyn folder.')
+    downscale_parser.add_argument('--factors', nargs='+', default=[2, 4],
+                                 help='Downscaling factors.')
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Handle each command separately
+    if args.command == 'download':
+        us = UrbanSynDownloader(args.data_dir)
+        us.download(args.data_types)
+    elif args.command == 'downscale':
+        us = UrbanSynDownloader(args.data_dir)
+        for factor in args.factors:
+            us.downscale(factor)
     else:
-        return torch.from_numpy(rgb)
+        parser.print_help()
     
+
+if __name__ == '__main__':
+    main()
