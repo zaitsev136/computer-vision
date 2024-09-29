@@ -42,7 +42,7 @@ def _add_background(logits):
 class UrbanSynSegFormer(LightningModule):
     def __init__(self, learning_rate=1e-3, lr_gamma=0.7):
         """Lightning module for training and using a SegFormer on UrbanSyn
-        dataset. Uses a B0 SegFormer fron NVIDIA huggingface, pretrained on
+        dataset. Uses a B0 SegFormer from NVIDIA huggingface, pretrained on
         CityScapes.
 
         Args:

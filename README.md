@@ -6,21 +6,18 @@ This repo is a collection of computer vision experiments with relevant datasets 
 
 ### Installation
 
+Tested with `python 3.11.9`
+
 * Clone the repo with `git clone git@github.com:zaitsev136/computer-vision.git`
-* Install `requirements.txt` with pip or conda. Tested on `python 3.11.9`
-
-### GPU Support (CUDA)
-If you want to train the models using GPU acceleration for faster performance, follow these steps:
-
-1. **Install NVIDIA Drivers**: Ensure that your system has the latest NVIDIA drivers installed. You can download them from the [NVIDIA website](https://www.nvidia.com/en-us/drivers/).
-2. **Install CUDA Toolkit**:
-    * Install the CUDA Toolkit, e.g. version 12.4, from the [CUDA Toolkit download page](https://developer.nvidia.com/cuda-toolkit-archive).
-    * Follow the instructions in the [CUDA Installation Guide](https://docs.nvidia.com/cuda/index.html) for your operating system.
-3. **Install PyTorch with CUDA Support**: After installing the NVIDIA drivers and CUDA toolkit, install the CUDA-enabled version of PyTorch following the [PyTorch installation instructions](https://pytorch.org/get-started/locally/).
-    * For example, for installation with `pip`, do:\
-`pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124`.
-    * For installation with `conda`, do:\
-`conda install pytorch torchvision pytorch-cuda=12.4 -c pytorch -c nvidia`
+* Create a virtual environment:\
+`python - m venv .venv`
+* Activate it:\
+`./.venv/Scripts/activate` in PowerShell or `source .venv/bin/activate` in bash:
+* Install requirements:\
+`pip install -r requirements.txt`
+* If you want to train and validate the models with GPU acceleration, upgrade torch to its CUDA version:\
+`pip uninstall -y torch torchvision`\
+`pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124`
 
 ### Working with dataset
 
