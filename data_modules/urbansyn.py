@@ -214,7 +214,7 @@ class UrbanSynDownloader:
                 Defaults to './data/urbansyn_resized'.
         """
         raw_size = np.array((1024, 2048))
-        new_size = raw_size//factor
+        new_size = raw_size//int(factor)
         dataset = UrbanSynDataset(self.path, transforms=A.Resize(*new_size),
                                   split='all', resized=False)
 
