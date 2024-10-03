@@ -44,8 +44,8 @@ COLORS = [
     ]
 
 CLASS_NAMES = ['unlabelled', 'road', 'sidewalk', 'building', 'wall', 'fence', 'pole', 'traffic_light',
-                'traffic_sign', 'vegetation', 'terrain', 'sky', 'person', 'rider', 'car', 'truck', 'bus',
-                'train', 'motorcycle', 'bicycle']
+               'traffic_sign', 'vegetation', 'terrain', 'sky', 'person', 'rider', 'car', 'truck', 'bus',
+               'train', 'motorcycle', 'bicycle']
 
 LABEL_COLORS = dict(zip(range(NUM_CLASSES), COLORS))
 
@@ -208,10 +208,6 @@ class UrbanSynDownloader:
 
         Args:
             factor (int): downscaling factor. Good choices are multiples of 2
-            input_path (str, optional): Path to raw UrbanSyn data.
-                Defaults to './data/urbansyn'.
-            output_path (str, optional): output path.
-                Defaults to './data/urbansyn_resized'.
         """
         raw_size = np.array((1024, 2048))
         new_size = raw_size//int(factor)
@@ -253,7 +249,7 @@ class UrbanSynDownloader:
                 ToTensorV2 are applied. Defaults to 'default'.
 
         Returns:
-            _type_: _description_
+            UrbanSynDataModule: UrbanSyn LightningDataModule
         """
         return UrbanSynDataModule(self.path, batch_size, downscaling,
                                   train_transforms, val_transforms)
