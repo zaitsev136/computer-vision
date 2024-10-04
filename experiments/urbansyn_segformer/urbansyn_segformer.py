@@ -55,7 +55,7 @@ class UrbanSynSegFormer(LightningModule):
         self.lr_gamma = lr_gamma
         self.save_hyperparameters()
         self.loss_fn = DiceLoss()
-        self.metrics = MeanIoU(urbansyn.NUM_CLASSES)
+        self.metrics = MeanIoU(urbansyn.NUM_CLASSES, include_background=False)
         self.validation_batch = None
 
     def forward(self, x):

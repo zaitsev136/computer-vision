@@ -10,6 +10,15 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from torchvision import transforms as T
 import argparse
+import sys
+
+# local imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(current_dir, '..'))
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
+
+from utils import albumentation_transform
 
 
 NUM_CLASSES = 20  # number of segmentation classes 
@@ -259,21 +268,6 @@ def _shift_class_indices(segmap):
     y = segmap + 1
     y[y==NUM_CLASSES] = 0
     return y
-
-
-def albumentation_transform(transforms, x, y):
-    """Applies the albumentations transforms to images and segmentation maps
-
-    Args:
-        transforms: albumentations transformation
-        x (np.ndarray): images
-        y (np.ndarray): segmentation masks
-
-    Returns:
-        tuple: transformed_images, transformed_masks
-    """
-    transformed = transforms(image=x, mask=y)
-    return  transformed['image'], transformed['mask']
 
 
 def colorize_segmap(segmap, for_pil=False):
