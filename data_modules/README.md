@@ -16,7 +16,7 @@ In this project, we only use the RGB images and the corresponding semantic segme
 
 ### Downloading the Dataset
 
-The dataset is **not included** in the repository. However, the file [data_modules/urbansyn.py](data_modules/urbansyn.py) provides command-line tools to download and downscale the dataset.
+The dataset is **not included** in the repository. However, the file [data_modules/urbansyn.py](urbansyn.py) provides command-line tools to download and downscale the dataset.
 
 To download the dataset, run:\
 `python data_modules/urbansyn.py download`
@@ -46,7 +46,7 @@ Here is an example:
 ### Downloading the Dataset
 
 To download the dataset, you need to register at the [Cityscapes website](https://www.cityscapes-dataset.com/) and request the access to the dataset.
-After that you can download the dataset using [data_modules/cityscapes.py](data_modules/cityscapes.py):
+After that you can download the dataset using [data_modules/cityscapes.py](cityscapes.py):
 
 `python data_modules/cityscapes.py download`
 
