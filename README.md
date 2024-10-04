@@ -25,54 +25,14 @@ The datasets are heavy (UrbanSyn with rgb images and semantic segmentation maps 
 
 ## Datasets
 
-### UrbanSyn
+The `data_modules` module provides tools to download and preprocess the datasets used in this project, namely UrbanSyn and Cityscapes. The datasets themselves are **not included** withing this repository. To download and preprocess the UrbanSyn dataset required for the UrbanSynSegFormer fine-tuning, run the following commands:
 
-Quoting the [UrbanSyn webpage](https://www.urbansyn.org), "UrbanSyn is an open synthetic dataset featuring photorealistic driving scenes. It contains ground-truth annotations for semantic segmentation, scene depth, panoptic instance segmentation, and 2D bounding boxes."
+```
+python data_modules/urbansyn.py --download
+python data_modules/urbansyn.py --downscale 2
+```
 
-In this work, we only use the RGB images and the corresponding semantic segmentation maps. Here is an example:
-
-![urbansyn_example](./img/urbansyn_example.png)
-
-#### Downloading the Dataset
-
-The dataset is **not included** in the repository. However, the file [data_modules/urbansyn.py](data_modules/urbansyn.py) provides command-line tools to download and downscale the dataset.
-
-To download the dataset, run:\
-`python data_modules/urbansyn.py download`
-
-To see options, run:\
-`python data_modules/urbansyn.py download --help`
-
-#### Preprocessing the Dataset
-
-The original dataset contains images with a resolution of 1024 by 2048 pixels. To speed up the training, we resize the images by factors 2 or 4. To perform the downscaling in advance (instead of during every training epoch), use:\
-`python data_modules/urbansyn.py downscale`
-
-Add `--help` to see more options.
-
-### Cityscapes
-
-[Cityscapes](https://www.cityscapes-dataset.com/) is a large-scale dataset which focuses on semantic understanding of urban street scenes. The dataset consists of around 5000 fine annotated images. Data was captured in 50 cities during several months, daytimes, and good weather conditions.
-
-In this work, we only use the RGB images and the corresponding semantic segmentation maps. Here is an example:
-
-![cityscapes_example](./img/cityscapes_example.png)
-
-#### Downloading the Dataset
-
-The dataset is **not included** in the repository. However, the file [data_modules/cityscapes.py](data_modules/cityscapes.py) provides command-line tools to download and downscale the dataset, provided you are registered on the [Cityscapes website](https://www.cityscapes-dataset.com/).
-
-To download the dataset, run:\
-`python data_modules/cityscapes.py download`
-
-Add `--help` to see options.
-
-#### Preprocessing the Dataset
-
-The original dataset contains images with a resolution of 1024 by 2048 pixels. To speed up the training, we resize the images by factors 2 or 4. To perform the downscaling in advance (instead of during every training epoch), use:\
-`python data_modules/cityscapes.py downscale`
-
-Add `--help` to see options.
+See more details in the [datasets readme](data_modules/README.md).
 
 ## Models
 
@@ -116,13 +76,10 @@ See the [LightningCLI documentation](https://lightning.ai/docs/pytorch/stable/cl
 
 See the [experiments/urbansyn_segformer/train_segformer.ipynb](experiments/urbansyn_segformer/train_segformer.ipynb) jupyter notebook for the demonstration of the training, validation and inference.
 
-After around 100 epochs, we reached 61.7% mean Intersection over Union metric, and 92.9% overall classification accuracy. Below is an inference example on a google street view of Kalckreuthweg, Hamburg:
+After around 100 epochs, the model reached 61.7% mean Intersection over Union metric, and 92.9% pixel classification accuracy. Below are a few validation images with the true and predicted segmentation maps:
+
+![val_results](./img/val_results.png)
+
+The model can bee used to predict segmentation maps for arbitrary input images. For example, here is an inference example on a google street view of Kalckreuthweg in Hamburg:
 
 ![Kalckreuthweg](./img/kalckreuthweg_results.png)
-
-## TL;DR
-
-```bash
-# to predict a segmentation map of your RGB image of a street, do:
-python experiments/urbansyn_segformer/urbansyn_segformer.py predict --input_path your_image.png
-```
