@@ -21,7 +21,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 
 from data_modules import urbansyn
-from utils import DiceLoss, MeanIoU
+import utils
 
 
 def _add_background(logits):
@@ -54,37 +54,41 @@ class UrbanSynSegFormer(LightningModule):
         self.lr = learning_rate
         self.lr_gamma = lr_gamma
         self.save_hyperparameters()
-        self.loss_fn = DiceLoss()
-        self.metrics = MeanIoU(urbansyn.NUM_CLASSES, include_background=False)
+        self.loss_fn = utils.DiceLoss()
         self.validation_batch = None
+
+    def setup(self, stage):
+        super().setup(stage)
+        self.val_intersections = torch.zeros(urbansyn.NUM_CLASSES-1, device=self.device)
+        self.val_unions = torch.zeros(urbansyn.NUM_CLASSES-1, device=self.device)
 
     def forward(self, x):
         output = _add_background(self.model(x).logits)
         return F.interpolate(output, scale_factor=4)
-    
-    def _calculate_loss_and_iou(self, x, y, calculate_metric=True, return_prediction=False):
-        prediction = self.forward(x)
-        if calculate_metric:
-            metric = self.metrics(prediction, y)
-        else:
-            metric = None
-        loss = self.loss_fn(prediction, y)
-        if return_prediction:
-             return loss, metric, prediction
-        else:
-            return loss, metric
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        loss, _ = self._calculate_loss_and_iou(x, y, calculate_metric=False)
+        predictions = self.forward(x)
+        loss = self.loss_fn(predictions, y)
         self.log('train_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        loss, iou = self._calculate_loss_and_iou(x, y)
+        predictions = self.forward(x)
+        loss = self.loss_fn(predictions, y)
         self.log('val_loss', loss)
-        self.log('val_iou', iou)
+
+        # for the IoU metrics
+        intersections, unions = utils.get_intersections_and_unions(predictions, y)
+        self.val_intersections += intersections
+        self.val_unions += unions
+
+        # classification accuracy
+        accuracy = utils.get_accuracy(predictions, y)
+        self.log('accuracy', accuracy, on_step=False, on_epoch=True)
+
+        # saving the first validation batch for logging predicted segmaps
         if self.validation_batch is None:
             self.validation_batch = x
             self.decoded_targets = urbansyn.colorize_segmap(y).to(self.validation_batch)
@@ -92,13 +96,22 @@ class UrbanSynSegFormer(LightningModule):
             self.validation_truth = torch.concat(list(self.decoded_targets), dim=1)
 
     def on_validation_epoch_end(self):
+        # predicted segmaps for the first validation batch
         prediction = self.forward(self.validation_batch)
         decoded_predictions = urbansyn.colorize_segmap(torch.argmax(prediction, 1)).to(self.validation_batch)
-        
         validation_predictions = torch.concat(list(decoded_predictions), dim=1)
         image = torch.concat([self.validation_images, self.validation_truth, validation_predictions], dim=2)
         self.logger.experiment.add_image('image', image, self.current_epoch)
-        
+        # IoU
+        self.val_unions[self.val_unions==0] = torch.nan
+        ious = self.val_intersections / self.val_unions
+        miou = ious.nanmean()
+        self.log('_MeanIoU_', miou, on_epoch=True, on_step=False)
+        for i, v in enumerate(ious):
+            self.log(f'{urbansyn.CLASS_NAMES[i+1]}_IoU', v, on_epoch=True, on_step=False)
+        self.val_intersections = 0
+        self.val_unions = 0
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, self.lr_gamma)
