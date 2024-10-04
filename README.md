@@ -50,6 +50,30 @@ The original dataset contains images with a resolution of 1024 by 2048 pixels. T
 
 Add `--help` to see more options.
 
+### Cityscapes
+
+[Cityscapes](https://www.cityscapes-dataset.com/) is a large-scale dataset which focuses on semantic understanding of urban street scenes. The dataset consists of around 5000 fine annotated images. Data was captured in 50 cities during several months, daytimes, and good weather conditions.
+
+In this work, we only use the RGB images and the corresponding semantic segmentation maps. Here is an example:
+
+![cityscapes_example](./img/cityscapes_example.png)
+
+#### Downloading the Dataset
+
+The dataset is **not included** in the repository. However, the file [data_modules/cityscapes.py](data_modules/cityscapes.py) provides command-line tools to download and downscale the dataset, provided you are registered on the [Cityscapes website](https://www.cityscapes-dataset.com/).
+
+To download the dataset, run:\
+`python data_modules/cityscapes.py download`
+
+Add `--help` to see options.
+
+#### Preprocessing the Dataset
+
+The original dataset contains images with a resolution of 1024 by 2048 pixels. To speed up the training, we resize the images by factors 2 or 4. To perform the downscaling in advance (instead of during every training epoch), use:\
+`python data_modules/cityscapes.py downscale`
+
+Add `--help` to see options.
+
 ## Models
 
 ### SegFormer
@@ -92,7 +116,7 @@ See the [LightningCLI documentation](https://lightning.ai/docs/pytorch/stable/cl
 
 See the [experiments/urbansyn_segformer/train_segformer.ipynb](experiments/urbansyn_segformer/train_segformer.ipynb) jupyter notebook for the demonstration of the training, validation and inference.
 
-After around 100 epochs, we reached a performance of 37.8% mean Intersection over Union metric. Below is an inference example on a google street view of Kalckreuthweg, Hamburg:
+After around 100 epochs, we reached 61.7% mean Intersection over Union metric, and 92.9% overall classification accuracy. Below is an inference example on a google street view of Kalckreuthweg, Hamburg:
 
 ![Kalckreuthweg](./img/kalckreuthweg_results.png)
 
