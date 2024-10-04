@@ -37,37 +37,55 @@ class DiceLoss(nn.Module):
         
         return 1 - dice_score.mean()  # Return Dice Loss
     
+
+def get_intersections_and_unions(predictions, targets, ignore_background=True):
+    """Calculates intersections and unions of predicted and target segmentation
+    maps for each class
+
+    Args:
+        predictions (torch.Tensor): prediction logits of shape (B, C, H, W)
+        targets (torch.Tensor): segmentation map with class indices, (B, H, W)
+        ignore_background (bool): If True, the first class is considered to be
+            background and pixels marked as background in the targets are masked
+            out of the calculation. Defaults to True.
+
+    Returns:
+        torch.Tensor, torch.Tensor: intersections and unions for each class.
+            Shapes (C-1) if ignore_background is true, and (C) otherwise
+    """
+    num_classes = predictions.size()[1]
+    predictions = torch.argmax(predictions, dim=1)  # from logits to class indices
+    predictions = F.one_hot(predictions, num_classes=num_classes)  # from indices to one_hot (B, H, W, C)
+    targets = F.one_hot(targets.to(torch.int64), num_classes=num_classes)  # from indices to one_hot (B, H, W, C)
+
+    reduce_axis = [0, 1, 2]
+    if ignore_background:
+        intersection = torch.sum(predictions & targets, dim=reduce_axis)[1:]
+        mask = ~targets[..., :1].repeat(1, 1, 1, num_classes).to(torch.bool)
+        union = torch.sum(predictions*mask | targets*mask, dim=reduce_axis)[1:]
+        return intersection, union
+    else:
+        intersection = torch.sum(predictions & targets, dim=reduce_axis)
+        union = torch.sum(predictions | targets, dim=reduce_axis)
+        return intersection, union
     
-class MeanIoU(nn.Module):
-    def __init__(self, num_classes, include_background=True, per_class=False):
-        """Mean Intersection over Union metric
 
-        Args:
-            num_classes (int): number of segmentation classes
-            include_background (bool, optional): whether or not to include
-                background. Defaults to True.
-            per_class (bool, optional): whether to compute the metric
-                for each class separately or for all classes at once.
-                Defaults to False.
-        """
-        super().__init__()
-        self.metric = torchmetrics.segmentation.MeanIoU(num_classes,
-                                                        include_background,
-                                                        per_class)
-    
-    def forward(self, predictions, targets):
-        """Calculates the MeanIoU metric.
+def get_accuracy(predictions, targets, ignore_background=True):
+    """Calculates classification accuracy
 
-        Args:
-            predictions (torch.Tensor): prediction logits of shape (B, C, H, W)
-            targets (torch.Tensor): segmentation map with class indices, (B, H, W)
+    Args:
+        predictions (torch.Tensor): prediction logits of shape (B, C, H, W)
+        targets (torch.Tensor): segmentation map with class indices, (B, H, W)
+        ignore_background (bool): If True, the first class is considered to be
+            background and pixels marked as background in the targets are masked
+            out of the calculation. Defaults to True.
 
-        Returns:
-            float or np.ndarray: meanIoU for each class separately or for
-                all classes at once 
-        """
-        # takes prediction logits
-        return self.metric(torch.argmax(predictions, dim=1), targets.to(torch.int64))
+    Returns:
+        float: classification accuracy
+    """
+    predictions = torch.argmax(predictions, dim=1)  # from logits to class indices
+    mask = targets!=0 if ignore_background else torch.ones_like(targets)
+    return torch.sum(predictions==targets) / torch.sum(mask)
 
 
 def albumentation_transform(transforms, x, y):

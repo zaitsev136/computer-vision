@@ -84,6 +84,8 @@ class CityscapesDataset(Dataset):
             self.split = 'val'
             self.return_segmap = False
         self.resized = resized
+        if downscaling==1:
+            self.resized = False
         if self.resized:
             size_str = str(1024//int(downscaling))
             if not os.path.exists(os.path.join(self.path, size_str)):

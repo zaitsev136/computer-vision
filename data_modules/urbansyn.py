@@ -77,6 +77,8 @@ class UrbanSynDataset(Dataset):
         self.transforms = transforms
         self.split = split
         self.resized = resized
+        if downscaling==1:
+            self.resized = False
         if self.resized:
             size_str = str(1024//downscaling)
             if not os.path.exists(os.path.join(self.path, size_str)):
