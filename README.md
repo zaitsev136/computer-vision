@@ -28,8 +28,8 @@ The datasets are heavy (UrbanSyn with rgb images and semantic segmentation maps 
 The `data_modules` module provides tools to download and preprocess the datasets used in this project, namely UrbanSyn and Cityscapes. The datasets themselves are **not included** withing this repository. To download and preprocess the UrbanSyn dataset required for the UrbanSynSegFormer fine-tuning, run the following commands:
 
 ```
-python data_modules/urbansyn.py --download
-python data_modules/urbansyn.py --downscale 2
+python data_modules/urbansyn.py download
+python data_modules/urbansyn.py downscale --factors 2
 ```
 
 See more details in the [datasets readme](data_modules/README.md).
