@@ -191,7 +191,7 @@ class UrbanSynDownloader:
         self.path = os.path.join(data_dir, 'urbansyn')
         self.path_resized = os.path.join(data_dir, 'urbansyn_resized')
 
-    def download(self, data_types=('rgb', 'ss')):
+    def download(self, data_types=('rgb', 'ss'), check_exist=True):
         """Downloads the UrbanSyn dataset (https://www.urbansyn.org/) from
         huggingface_hub. The entire dataset is >70 GB, so it takes a while
         to download it. Without the depth maps it is "only" 21 GB.
@@ -201,11 +201,14 @@ class UrbanSynDownloader:
                 'rgb' for images (21 GB), 'ss' for semantic segmentation maps
                 (385 MB), 'depth' for depth maps (59 GB!). Defaults to
                 ('rgb', 'ss').
+            check_exist (book, optional): if True, does not download if the
+                data_dir/urbansyn already exists. Set to False if you want to
+                continue an interrupted download. Defaults to True.
         """
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
 
-        if os.path.exists(self.path):
+        if check_exist and os.path.exists(self.path):
             print(f'{self.path} already exists.')
         else:
             for dt in data_types:
@@ -325,6 +328,7 @@ def main():
                                  help='Output path. (Default: %(default)s)')
     download_parser.add_argument('--data_types', nargs='+', default=['rgb', 'ss'],
                                  help='Which data to download: "rgb" for images, "ss" for segmentation masks. (Default: rgb ss)')
+    download_parser.add_argument('--resume', action=argparse.BooleanOptionalAction, help='Resume interrupted download')
 
     downscale_parser = subparsers.add_parser('downscale', help='Downscales the images and maps in the dataset by the provided factor.')
     downscale_parser.add_argument('--data_dir', type=str, default=os.path.join(root_dir, 'data'),
@@ -338,7 +342,7 @@ def main():
     # Handle each command separately
     if args.command == 'download':
         us = UrbanSynDownloader(args.data_dir)
-        us.download(args.data_types)
+        us.download(args.data_types, not args.resume)
     elif args.command == 'downscale':
         us = UrbanSynDownloader(args.data_dir)
         for factor in args.factors:
